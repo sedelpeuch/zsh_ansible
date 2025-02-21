@@ -1,8 +1,9 @@
 - name: Ensure starship is installed
   hosts: all
-  become: yes
+  become: no
   tasks:
     - name: Ensure curl is installed
+      become: yes
       apt:
         name: curl
         state: present

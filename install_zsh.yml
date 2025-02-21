@@ -7,6 +7,9 @@
         name: zsh
         state: present
 
+- name: Configure zsh for user
+  hosts: all
+  tasks:
     - name: Fetch .zshrc from secret gist
       uri:
         url: "https://gist.githubusercontent.com/sedelpeuch/a595fc7352f803c089534b00cba9e2e7/raw"

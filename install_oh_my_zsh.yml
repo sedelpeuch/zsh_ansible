@@ -1,11 +1,13 @@
 - name: Ensure oh-my-zsh is installed
   hosts: all
-  become: yes
+  become: no
   tasks:
     - name: Ensure git is installed
+      become: yes
       apt:
         name: git
         state: present
+
     - name: Check if oh-my-zsh is installed
       stat:
         path: ~/.oh-my-zsh
@@ -22,17 +24,68 @@
       shell: /tmp/install_oh_my_zsh.sh --unattended
       when: not oh_my_zsh_installed.stat.exists
 
+    - name: Install zsh-autosuggestions plugin
+      stat:
+        path: ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+      register: zsh_autosuggestions_installed
+      when: oh_my_zsh_installed.stat.exists
 
+    - name: Clone zsh-autosuggestions
+      git:
+        repo: https://github.com/zsh-users/zsh-autosuggestions
+        dest: ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+      when: not zsh_autosuggestions_installed.stat.exists
 
-    - name: Install zsh plugins
-      shell: |
-        git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-        git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
-        git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-completions
-        git clone https://github.com/zsh-users/zsh-history-substring-search ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-history-substring-search
-        git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting
+    - name: Install zsh-syntax-highlighting plugin
+      stat:
+        path: ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+      register: zsh_syntax_highlighting_installed
+      when: oh_my_zsh_installed.stat.exists
+
+    - name: Clone zsh-syntax-highlighting
+      git:
+        repo: https://github.com/zsh-users/zsh-syntax-highlighting
+        dest: ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+      when: not zsh_syntax_highlighting_installed.stat.exists
+
+    - name: Install zsh-completions plugin
+      stat:
+        path: ~/.oh-my-zsh/custom/plugins/zsh-completions
+      register: zsh_completions_installed
+      when: oh_my_zsh_installed.stat.exists
+
+    - name: Clone zsh-completions
+      git:
+        repo: https://github.com/zsh-users/zsh-completions
+        dest: ~/.oh-my-zsh/custom/plugins/zsh-completions
+      when: not zsh_completions_installed.stat.exists
+
+    - name: Install zsh-history-substring-search plugin
+      stat:
+        path: ~/.oh-my-zsh/custom/plugins/zsh-history-substring-search
+      register: zsh_history_substring_search_installed
+      when: oh_my_zsh_installed.stat.exists
+
+    - name: Clone zsh-history-substring-search
+      git:
+        repo: https://github.com/zsh-users/zsh-history-substring-search
+        dest: ~/.oh-my-zsh/custom/plugins/zsh-history-substring-search
+      when: not zsh_history_substring_search_installed.stat.exists
+
+    - name: Install fast-syntax-highlighting plugin
+      stat:
+        path: ~/.oh-my-zsh/custom/plugins/fast-syntax-highlighting
+      register: fast_syntax_highlighting_installed
+      when: oh_my_zsh_installed.stat.exists
+
+    - name: Clone fast-syntax-highlighting
+      git:
+        repo: https://github.com/zdharma-continuum/fast-syntax-highlighting
+        dest: ~/.oh-my-zsh/custom/plugins/fast-syntax-highlighting
+      when: not fast_syntax_highlighting_installed.stat.exists
 
     - name: Install autojump
+      become: yes
       apt:
         name: autojump
         state: present
