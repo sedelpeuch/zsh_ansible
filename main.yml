@@ -1,0 +1,3 @@
+- import_playbook: install_zsh.yml
+- import_playbook: install_oh_my_zsh.yml
+- import_playbook: install_starship.yml

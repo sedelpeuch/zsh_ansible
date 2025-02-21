@@ -1,0 +1,14 @@
+- name: Ensure zsh is installed
+  hosts: all
+  become: yes
+  tasks:
+    - name: Check if zsh is installed
+      command: which zsh
+      register: zsh_installed
+      ignore_errors: yes
+
+    - name: Install zsh
+      apt:
+        name: zsh
+        state: present
+      when: zsh_installed.rc != 0

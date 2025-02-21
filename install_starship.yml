@@ -1,0 +1,13 @@
+- name: Ensure starship is installed
+  hosts: all
+  become: yes
+  tasks:
+    - name: Check if starship is installed
+      command: which starship
+      register: starship_installed
+      ignore_errors: yes
+
+    - name: Install starship
+      shell: |
+        curl -fsSL https://starship.rs/install.sh | bash -s -- -y
+      when: starship_installed.rc != 0
