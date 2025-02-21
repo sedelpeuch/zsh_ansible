@@ -2,13 +2,18 @@
   hosts: all
   become: yes
   tasks:
-    - name: Check if zsh is installed
-      command: which zsh
-      register: zsh_installed
-      ignore_errors: yes
-
-    - name: Install zsh
+    - name: Ensure zsh is installed
       apt:
         name: zsh
         state: present
-      when: zsh_installed.rc != 0
+
+    - name: Fetch .zshrc from secret gist
+      uri:
+        url: "https://gist.githubusercontent.com/sedelpeuch/a595fc7352f803c089534b00cba9e2e7/raw"
+        return_content: yes
+      register: zshrc_content
+
+    - name: Place .zshrc in home directory
+      copy:
+        content: "{{ zshrc_content.content }}"
+        dest: ~/.zshrc

@@ -2,12 +2,23 @@
   hosts: all
   become: yes
   tasks:
+    - name: Ensure curl is installed
+      apt:
+        name: curl
+        state: present
+
     - name: Check if starship is installed
       command: which starship
       register: starship_installed
-      ignore_errors: yes
+      failed_when: false
+
+    - name: Download starship installer
+      get_url:
+        url: https://starship.rs/install.sh
+        dest: /tmp/install_starship.sh
+        mode: '0755'
+      when: starship_installed.rc != 0
 
     - name: Install starship
-      shell: |
-        curl -fsSL https://starship.rs/install.sh | bash -s -- -y
+      shell: /tmp/install_starship.sh -y
       when: starship_installed.rc != 0
