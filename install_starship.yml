@@ -21,6 +21,7 @@
       when: starship_installed.rc != 0
 
     - name: Install starship
+      become: yes
       shell: /tmp/install_starship.sh -y
       when: starship_installed.rc != 0
 
