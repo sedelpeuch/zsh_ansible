@@ -84,6 +84,30 @@
         dest: ~/.oh-my-zsh/custom/plugins/fast-syntax-highlighting
       when: not fast_syntax_highlighting_installed.stat.exists
 
+    - name: Install zsh-bat plugin
+      stat:
+        path: ~/.oh-my-zsh/custom/plugins/zsh-bat
+      register: zsh_bat_installed
+      when: oh_my_zsh_installed.stat.exists
+
+    - name: Clone zsh-bat
+      git:
+        repo: https://github.com/fdellwing/zsh-bat.git
+        dest: ~/.oh-my-zsh/custom/plugins/zsh-bat
+      when: not zsh_bat_installed.stat.exists
+
+    - name: Install autoupdate plugin
+      stat:
+        path: ~/.oh-my-zsh/custom/plugins/autoupdate
+      register: autoupdate_installed
+      when: oh_my_zsh_installed.stat.exists
+
+    - name: Clone autoupdate
+      git:
+        repo: https://github.com/TamCore/autoupdate-oh-my-zsh-plugins
+        dest: ~/.oh-my-zsh/custom/plugins/autoupdate
+      when: not autoupdate_installed.stat.exists
+
     - name: Install autojump
       become: yes
       apt:
