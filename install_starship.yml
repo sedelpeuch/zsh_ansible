@@ -22,3 +22,20 @@
     - name: Install starship
       shell: /tmp/install_starship.sh -y
       when: starship_installed.rc != 0
+
+    - name: Ensure config directory exists
+      file:
+        path: ~/.config
+        state: directory
+        mode: '0755'
+
+    - name: Fetch starship.toml from secret gist
+      uri:
+        url: "https://gist.githubusercontent.com/sedelpeuch/1fc26438431e6a29ea35b102b40ab367/raw"
+        return_content: yes
+      register: starship_config_content
+
+    - name: Place starship.toml in config directory
+      copy:
+        content: "{{ starship_config_content.content }}"
+        dest: ~/.config/starship.toml
