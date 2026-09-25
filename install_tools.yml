@@ -1,0 +1,50 @@
+- name: Install fzf, mise and node
+  hosts: all
+  vars:
+    arch: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_architecture] }}"
+    bin_dir: "{{ ansible_env.HOME }}/.local/bin"
+    cache_dir: "{{ ansible_env.HOME }}/.cache/zsh_ansible"
+    mise: "{{ ansible_env.HOME }}/.local/bin/mise"
+  tasks:
+    - name: Create directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ bin_dir }}"
+        - "{{ cache_dir }}"
+
+    # Ubuntu's apt fzf is too old for `fzf --zsh` (needs >= 0.48)
+    - name: Download fzf
+      ansible.builtin.get_url:
+        url: "https://github.com/junegunn/fzf/releases/download/v{{ fzf_version }}/fzf-{{ fzf_version }}-linux_{{ arch }}.tar.gz"
+        dest: "{{ cache_dir }}/fzf-{{ fzf_version }}.tar.gz"
+        mode: "0644"
+
+    - name: Install fzf
+      ansible.builtin.unarchive:
+        src: "{{ cache_dir }}/fzf-{{ fzf_version }}.tar.gz"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+
+    - name: Install mise
+      ansible.builtin.shell:
+        cmd: set -o pipefail && curl -fsSL https://mise.run | sh
+        executable: /bin/bash
+        creates: "{{ mise }}"
+
+    - name: Read global node version
+      ansible.builtin.command:
+        cmd: "{{ mise }} current node"
+        chdir: "{{ ansible_env.HOME }}"
+      register: mise_node
+      changed_when: false
+      failed_when: false
+
+    - name: Install node globally with mise
+      ansible.builtin.command:
+        cmd: "{{ mise }} use --global node@{{ node_version }}"
+        chdir: "{{ ansible_env.HOME }}"
+      when: mise_node.stdout | trim != node_version
+      changed_when: true

@@ -1,3 +1,6 @@
 - import_playbook: install_zsh.yml
 - import_playbook: install_oh_my_zsh.yml
+- import_playbook: install_tools.yml
 - import_playbook: install_starship.yml
+- import_playbook: configure_dotfiles.yml
+- import_playbook: configure_claude.yml

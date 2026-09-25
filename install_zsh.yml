@@ -1,22 +1,23 @@
-- name: Ensure zsh is installed
+- name: Install zsh and base packages
   hosts: all
-  become: yes
   tasks:
-    - name: Ensure zsh is installed
-      apt:
-        name: zsh
+    - name: Install packages
+      become: true
+      ansible.builtin.apt:
+        name:
+          - zsh
+          - git
+          - curl
+          - ca-certificates
+          - tar
+          - xz-utils
+          - jq
         state: present
+        update_cache: true
+        cache_valid_time: 3600
 
-- name: Configure zsh for user
-  hosts: all
-  tasks:
-    - name: Fetch .zshrc from secret gist
-      uri:
-        url: "https://gist.githubusercontent.com/sedelpeuch/a595fc7352f803c089534b00cba9e2e7/raw"
-        return_content: yes
-      register: zshrc_content
-
-    - name: Place .zshrc in home directory
-      copy:
-        content: "{{ zshrc_content.content }}"
-        dest: ~/.zshrc
+    - name: Set zsh as login shell
+      become: true
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        shell: /usr/bin/zsh

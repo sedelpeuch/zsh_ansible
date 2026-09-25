@@ -1,23 +1,34 @@
-## Testing the Playbook in a Docker Environment
+# zsh_ansible
 
-To test the playbook in a Docker environment, follow these steps:
+Playbooks Ansible qui installent mon environnement shell sur Debian/Ubuntu :
 
-1. **Use an Existing Docker Image**: Use an existing Docker image with Ansible pre-installed.
+- zsh (défini comme shell de connexion), git, curl, jq
+- oh-my-zsh et les plugins `zsh-autosuggestions`, `zsh-syntax-highlighting`, `fzf-tab` et `you-should-use` (`history-substring-search` est intégré à oh-my-zsh)
+- fzf (binaire GitHub, car la version apt est trop ancienne pour `fzf --zsh`), mise et node (défini globalement via mise)
+- starship
+- `.zshrc` et `.zshenv` depuis le [gist zsh](https://gist.github.com/sedelpeuch/a595fc7352f803c089534b00cba9e2e7)
+- `starship.toml` et `claude-statusline.sh` depuis le [gist starship](https://gist.github.com/sedelpeuch/1fc26438431e6a29ea35b102b40ab367)
+- la clé `statusLine` de `~/.claude/settings.json` : elle est fusionnée dans le fichier existant, dont le reste n'est jamais touché, et une sauvegarde est faite
 
-    ```sh
-    docker pull williamyeh/ansible:ubuntu18.04
-    ```
+Les versions (fzf, node) et les URLs se règlent dans `group_vars/all.yml`.
 
-2. **Run the Docker Container**: Run the Docker container and mount your playbook directory.
+## Utilisation
 
-    ```sh
-    docker run --rm -it -v $(pwd):/ansible/playbooks williamyeh/ansible:ubuntu18.04 ansible-playbook /ansible/playbooks/main.yml -c local
-    ```
+```sh
+ansible-playbook main.yml --ask-become-pass
+```
 
-3. **Run the Docker Container and Keep it Running**: To inspect the results after the playbook execution, keep the container running.
+L'inventaire par défaut (`inventory`) cible `localhost`. Pour une autre machine, crée un `inventory.<nom>` (ignoré par git) et passe-le avec `-i`.
 
-    ```sh
-    docker run --rm -it -v $(pwd):/ansible/playbooks williamyeh/ansible:ubuntu18.04 /bin/bash -c "ansible-playbook /ansible/playbooks/main.yml -c local && exec /bin/bash"
-    ```
+## Tester dans un conteneur jetable
 
-This will use an existing Docker image with Ansible installed, run the playbook inside the container without requiring SSH, and keep the container running to allow you to inspect the results.
+```sh
+docker run --rm -it -v "$PWD":/src:ro ubuntu:24.04 bash -c '
+  apt-get update && apt-get install -y ansible-core sudo &&
+  useradd -m -s /bin/bash tester && echo "tester ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/tester &&
+  cp -r /src /home/tester/zsh_ansible && chown -R tester: /home/tester/zsh_ansible &&
+  cd /home/tester/zsh_ansible &&
+  sudo -u tester ansible-playbook main.yml &&
+  sudo -u tester ansible-playbook main.yml   # 2e run : doit afficher changed=0
+'
+```

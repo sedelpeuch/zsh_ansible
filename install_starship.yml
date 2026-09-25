@@ -1,43 +1,22 @@
-- name: Ensure starship is installed
+- name: Install starship
   hosts: all
-  become: no
   tasks:
-    - name: Ensure curl is installed
-      become: yes
-      apt:
-        name: curl
-        state: present
-
-    - name: Check if starship is installed
-      command: which starship
-      register: starship_installed
-      failed_when: false
-
-    - name: Download starship installer
-      get_url:
-        url: https://starship.rs/install.sh
-        dest: /tmp/install_starship.sh
-        mode: '0755'
-      when: starship_installed.rc != 0
-
     - name: Install starship
-      become: yes
-      shell: /tmp/install_starship.sh -y
-      when: starship_installed.rc != 0
+      become: true
+      ansible.builtin.shell:
+        cmd: set -o pipefail && curl -fsSL https://starship.rs/install.sh | sh -s -- -y
+        executable: /bin/bash
+        creates: /usr/local/bin/starship
 
-    - name: Ensure config directory exists
-      file:
-        path: ~/.config
+    - name: Create config directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.config"
         state: directory
-        mode: '0755'
+        mode: "0755"
 
-    - name: Fetch starship.toml from secret gist
-      uri:
-        url: "https://gist.githubusercontent.com/sedelpeuch/1fc26438431e6a29ea35b102b40ab367/raw"
-        return_content: yes
-      register: starship_config_content
-
-    - name: Place starship.toml in config directory
-      copy:
-        content: "{{ starship_config_content.content }}"
-        dest: ~/.config/starship.toml
+    - name: Deploy starship.toml from gist
+      ansible.builtin.get_url:
+        url: "{{ starship_gist }}/starship.toml"
+        dest: "{{ ansible_env.HOME }}/.config/starship.toml"
+        mode: "0644"
+        force: true

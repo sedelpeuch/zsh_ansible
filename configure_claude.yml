@@ -1,0 +1,44 @@
+- name: Configure Claude Code statusline
+  hosts: all
+  vars:
+    settings_path: "{{ ansible_env.HOME }}/.claude/settings.json"
+  tasks:
+    - name: Create directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ ansible_env.HOME }}/.local/bin"
+        - "{{ ansible_env.HOME }}/.claude"
+
+    - name: Deploy claude-statusline.sh from gist
+      ansible.builtin.get_url:
+        url: "{{ starship_gist }}/claude-statusline.sh"
+        dest: "{{ ansible_env.HOME }}/.local/bin/claude-statusline.sh"
+        mode: "0755"
+        force: true
+
+    - name: Check settings.json
+      ansible.builtin.stat:
+        path: "{{ settings_path }}"
+      register: settings_file
+
+    - name: Read settings.json
+      ansible.builtin.slurp:
+        src: "{{ settings_path }}"
+      register: settings_raw
+      when: settings_file.stat.exists
+
+    # from_json fails on invalid JSON, so a broken file is never overwritten
+    - name: Parse settings.json
+      ansible.builtin.set_fact:
+        claude_settings: "{{ (settings_raw.content | b64decode | from_json) if settings_file.stat.exists else {} }}"
+
+    - name: Merge statusLine into settings.json
+      ansible.builtin.copy:
+        content: "{{ claude_settings | combine({'statusLine': claude_status_line}) | to_nice_json(indent=2) }}\n"
+        dest: "{{ settings_path }}"
+        mode: "0600"
+        backup: true
+      when: claude_settings.statusLine | default(none) != claude_status_line

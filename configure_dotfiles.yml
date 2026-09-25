@@ -1,0 +1,13 @@
+# Runs after oh-my-zsh so its installer cannot replace the .zshrc
+- name: Deploy zsh dotfiles
+  hosts: all
+  tasks:
+    - name: Deploy dotfiles from gist
+      ansible.builtin.get_url:
+        url: "{{ zshrc_gist }}/{{ item }}"
+        dest: "{{ ansible_env.HOME }}/{{ item }}"
+        mode: "0644"
+        force: true
+      loop:
+        - .zshrc
+        - .zshenv

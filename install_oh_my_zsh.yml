@@ -1,115 +1,18 @@
-- name: Ensure oh-my-zsh is installed
+- name: Install oh-my-zsh and plugins
   hosts: all
-  become: no
   tasks:
-    - name: Ensure git is installed
-      become: yes
-      apt:
-        name: git
-        state: present
-
-    - name: Check if oh-my-zsh is installed
-      stat:
-        path: ~/.oh-my-zsh
-      register: oh_my_zsh_installed
-
-    - name: Download oh-my-zsh installer
-      get_url:
-        url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
-        dest: /tmp/install_oh_my_zsh.sh
-        mode: '0755'
-      when: not oh_my_zsh_installed.stat.exists
-
     - name: Install oh-my-zsh
-      shell: /tmp/install_oh_my_zsh.sh --unattended
-      when: not oh_my_zsh_installed.stat.exists
+      ansible.builtin.shell:
+        cmd: set -o pipefail && curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh -s -- --unattended --keep-zshrc
+        executable: /bin/bash
+        creates: "{{ ansible_env.HOME }}/.oh-my-zsh/oh-my-zsh.sh"
 
-    - name: Install zsh-autosuggestions plugin
-      stat:
-        path: ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
-      register: zsh_autosuggestions_installed
-      when: oh_my_zsh_installed.stat.exists
-
-    - name: Clone zsh-autosuggestions
-      git:
-        repo: https://github.com/zsh-users/zsh-autosuggestions
-        dest: ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
-      when: not zsh_autosuggestions_installed.stat.exists
-
-    - name: Install zsh-syntax-highlighting plugin
-      stat:
-        path: ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-      register: zsh_syntax_highlighting_installed
-      when: oh_my_zsh_installed.stat.exists
-
-    - name: Clone zsh-syntax-highlighting
-      git:
-        repo: https://github.com/zsh-users/zsh-syntax-highlighting
-        dest: ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-      when: not zsh_syntax_highlighting_installed.stat.exists
-
-    - name: Install zsh-completions plugin
-      stat:
-        path: ~/.oh-my-zsh/custom/plugins/zsh-completions
-      register: zsh_completions_installed
-      when: oh_my_zsh_installed.stat.exists
-
-    - name: Clone zsh-completions
-      git:
-        repo: https://github.com/zsh-users/zsh-completions
-        dest: ~/.oh-my-zsh/custom/plugins/zsh-completions
-      when: not zsh_completions_installed.stat.exists
-
-    - name: Install zsh-history-substring-search plugin
-      stat:
-        path: ~/.oh-my-zsh/custom/plugins/zsh-history-substring-search
-      register: zsh_history_substring_search_installed
-      when: oh_my_zsh_installed.stat.exists
-
-    - name: Clone zsh-history-substring-search
-      git:
-        repo: https://github.com/zsh-users/zsh-history-substring-search
-        dest: ~/.oh-my-zsh/custom/plugins/zsh-history-substring-search
-      when: not zsh_history_substring_search_installed.stat.exists
-
-    - name: Install fast-syntax-highlighting plugin
-      stat:
-        path: ~/.oh-my-zsh/custom/plugins/fast-syntax-highlighting
-      register: fast_syntax_highlighting_installed
-      when: oh_my_zsh_installed.stat.exists
-
-    - name: Clone fast-syntax-highlighting
-      git:
-        repo: https://github.com/zdharma-continuum/fast-syntax-highlighting
-        dest: ~/.oh-my-zsh/custom/plugins/fast-syntax-highlighting
-      when: not fast_syntax_highlighting_installed.stat.exists
-
-    - name: Install zsh-bat plugin
-      stat:
-        path: ~/.oh-my-zsh/custom/plugins/zsh-bat
-      register: zsh_bat_installed
-      when: oh_my_zsh_installed.stat.exists
-
-    - name: Clone zsh-bat
-      git:
-        repo: https://github.com/fdellwing/zsh-bat.git
-        dest: ~/.oh-my-zsh/custom/plugins/zsh-bat
-      when: not zsh_bat_installed.stat.exists
-
-    - name: Install autoupdate plugin
-      stat:
-        path: ~/.oh-my-zsh/custom/plugins/autoupdate
-      register: autoupdate_installed
-      when: oh_my_zsh_installed.stat.exists
-
-    - name: Clone autoupdate
-      git:
-        repo: https://github.com/TamCore/autoupdate-oh-my-zsh-plugins
-        dest: ~/.oh-my-zsh/custom/plugins/autoupdate
-      when: not autoupdate_installed.stat.exists
-
-    - name: Install autojump
-      become: yes
-      apt:
-        name: autojump
-        state: present
+    - name: Clone custom plugins
+      ansible.builtin.git:
+        repo: "{{ item.value }}"
+        dest: "{{ ansible_env.HOME }}/.oh-my-zsh/custom/plugins/{{ item.key }}"
+        depth: 1
+        update: false
+      loop: "{{ omz_plugins | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
