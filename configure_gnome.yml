@@ -1,0 +1,133 @@
+# Skipped without a GNOME session (container, SSH): extensions install over the session D-Bus
+- name: Configure GNOME
+  hosts: all
+  vars:
+    ext_dir: "{{ ansible_env.HOME }}/.local/share/gnome-shell/extensions"
+    notif_themes: "{{ ext_dir }}/notification-configurator@exposedcat/utils/themes.js"
+    terminator_conf: "{{ ansible_env.HOME }}/.config/terminator/config"
+  tasks:
+    - name: Check GNOME Shell
+      ansible.builtin.command:
+        cmd: gnome-shell --version
+      register: gnome_shell
+      changed_when: false
+      failed_when: false
+
+    - name: Stop without a GNOME session
+      ansible.builtin.meta: end_play
+      when: gnome_shell.rc != 0 or ansible_env.DBUS_SESSION_BUS_ADDRESS is not defined
+
+    - name: Check installed extensions
+      ansible.builtin.stat:
+        path: "{{ ext_dir }}/{{ item }}"
+      loop: "{{ gnome_extensions }}"
+      register: ext_dirs
+
+    # Hot install, no relog: GNOME opens an "Install" dialog per extension.
+    # The D-Bus "NoReply" error is harmless, the enable task below checks the result.
+    - name: Install missing extensions (confirm each dialog)
+      ansible.builtin.command:
+        argv:
+          - gdbus
+          - call
+          - --session
+          - --timeout=120
+          - --dest=org.gnome.Shell.Extensions
+          - --object-path=/org/gnome/Shell/Extensions
+          - --method=org.gnome.Shell.Extensions.InstallRemoteExtension
+          - "{{ item.item }}"
+      loop: "{{ ext_dirs.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: not item.stat.exists
+      changed_when: true
+      failed_when: false
+
+    - name: List enabled extensions
+      ansible.builtin.command:
+        cmd: gnome-extensions list --enabled
+      register: ext_enabled
+      changed_when: false
+
+    - name: Enable extensions
+      ansible.builtin.command:
+        argv: [gnome-extensions, enable, "{{ item }}"]
+      loop: "{{ gnome_extensions }}"
+      when: item not in ext_enabled.stdout_lines
+      changed_when: true
+
+    - name: Read extension settings
+      ansible.builtin.command:
+        argv: [dconf, read, "{{ item.key }}"]
+      loop: "{{ gnome_dconf }}"
+      loop_control:
+        label: "{{ item.key }}"
+      register: dconf_current
+      changed_when: false
+
+    - name: Write extension settings
+      ansible.builtin.command:
+        argv: [dconf, write, "{{ item.item.key }}", "{{ item.item.value }}"]
+      loop: "{{ dconf_current.results }}"
+      loop_control:
+        label: "{{ item.item.key }}"
+      when: item.stdout != item.item.value
+      changed_when: true
+
+    - name: Check Notification Configurator
+      ansible.builtin.stat:
+        path: "{{ notif_themes }}"
+      register: notif_themes_file
+
+    # St cannot parse #rrggbbaa colors, so any transparency makes the banner unreadable.
+    # Overwritten by every extension update (rerun the playbook), active after a relog.
+    - name: Patch Notification Configurator colors to rgba()
+      ansible.builtin.replace:
+        path: "{{ notif_themes }}"
+        regexp: '\? `\$\{hex\}\$\{Math\.round\(alpha \* 255\)\s*\.toString\(16\)\s*\.padStart\(2, "0"\)\}`'
+        replace: '? `rgba(${redComponent}, ${greenComponent}, ${blueComponent}, ${alpha})`'
+      when: notif_themes_file.stat.exists
+
+    - name: Check the rgba() patch
+      ansible.builtin.command:
+        argv: [grep, -q, "rgba(", "{{ notif_themes }}"]
+      register: notif_patch
+      changed_when: false
+      failed_when: false
+      when: notif_themes_file.stat.exists
+
+    - name: Warn if the extension code changed
+      ansible.builtin.debug:
+        msg: "Notification Configurator: pattern not found, the extension code changed, patch themes.js by hand"
+      when: notif_themes_file.stat.exists and notif_patch.rc != 0
+
+    - name: Check Terminator config
+      ansible.builtin.stat:
+        path: "{{ terminator_conf }}"
+      register: terminator_file
+
+    - name: Hide Terminator title bar
+      ansible.builtin.lineinfile:
+        path: "{{ terminator_conf }}"
+        regexp: '^\s*borderless\s*='
+        line: "  borderless = True"
+        insertafter: '^\[global_config\]$'
+        backup: true
+      when: terminator_file.stat.exists
+
+    - name: Create GTK 3 config directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.config/gtk-3.0"
+        state: directory
+        mode: "0755"
+
+    - name: Pad VTE terminals (Terminator)
+      ansible.builtin.blockinfile:
+        path: "{{ ansible_env.HOME }}/.config/gtk-3.0/gtk.css"
+        marker: "/* {mark} zsh_ansible: VTE padding */"
+        create: true
+        mode: "0644"
+        block: |
+          vte-terminal {
+            padding: 10px 14px;
+          }
